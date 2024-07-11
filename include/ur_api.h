@@ -1311,6 +1311,7 @@ typedef enum ur_platform_backend_t {
 #ifndef UR_DEVICE_BINARY_TARGET_AMDGCN
 /// @brief AMD GCN
 #define UR_DEVICE_BINARY_TARGET_AMDGCN "amdgcn"
+#define UR_DEVICE_BINARY_TARGET_LLVM_AMDGCN "llvm_amdgcn"
 #endif // UR_DEVICE_BINARY_TARGET_AMDGCN
 
 ///////////////////////////////////////////////////////////////////////////////

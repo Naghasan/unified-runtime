@@ -1045,25 +1045,63 @@ UR_APIEXPORT ur_result_t UR_APICALL urDeviceCreateWithNativeHandle(
 /// \return UR_RESULT_SUCCESS If available, the first binary that is PTX
 ///
 UR_APIEXPORT ur_result_t UR_APICALL
-urDeviceSelectBinary(ur_device_handle_t, const ur_device_binary_t *pBinaries,
-                     uint32_t NumBinaries, uint32_t *pSelectedBinary) {
+urDeviceSelectBinary(ur_device_handle_t hDevice,
+                     const ur_device_binary_t *pBinaries, uint32_t NumBinaries,
+                     uint32_t *pSelectedBinary) {
   // Ignore unused parameter
   UR_ASSERT(NumBinaries > 0, UR_RESULT_ERROR_INVALID_ARGUMENT);
 
   // Look for an image for the HIP target, and return the first one that is
   // found
+  // AMD requires matching arch, the compiler now embed the arch in the target
+  // so favor this over the plain UR_DEVICE_BINARY_TARGET_AMDGCN
 #if defined(__HIP_PLATFORM_AMD__)
-  const char *BinaryType = UR_DEVICE_BINARY_TARGET_AMDGCN;
+  hipDeviceProp_t Props;
+  detail::ur::assertion(hipGetDeviceProperties(&Props, hDevice->get()) ==
+                        hipSuccess);
+  std::string BinaryTypeStr = UR_DEVICE_BINARY_TARGET_AMDGCN "-";
+  BinaryTypeStr += Props.gcnArchName;
+  const char *BinaryType = BinaryTypeStr.c_str();
 #elif defined(__HIP_PLATFORM_NVIDIA__)
   const char *BinaryType = UR_DEVICE_BINARY_TARGET_NVPTX64;
 #else
 #error("Must define exactly one of __HIP_PLATFORM_AMD__ or __HIP_PLATFORM_NVIDIA__");
 #endif
+#ifdef SYCL_ENABLE_KERNEL_FUSION
+  uint32_t llvmBinary = -1;
+#endif
+  uint32_t oldNativeBinary = -1;
   for (uint32_t i = 0; i < NumBinaries; i++) {
     if (strcmp(pBinaries[i].pDeviceTargetSpec, BinaryType) == 0) {
       *pSelectedBinary = i;
       return UR_RESULT_SUCCESS;
     }
+#if defined(__HIP_PLATFORM_AMD__)
+    if (oldNativeBinary == (uint32_t)-1 &&
+        strcmp(pBinaries[i].pDeviceTargetSpec, UR_DEVICE_BINARY_TARGET_AMDGCN) == 0) {
+      oldNativeBinary = i;
+    }
+#endif
+#ifdef SYCL_ENABLE_KERNEL_FUSION
+    if (llvmBinary == (uint32_t)-1 &&
+        strcmp(pBinaries[i].pDeviceTargetSpec,
+               UR_DEVICE_BINARY_TARGET_LLVM_AMDGCN) == 0) {
+      llvmBinary = i;
+    }
+#endif
+  }
+
+#ifdef SYCL_ENABLE_KERNEL_FUSION
+  // If we fail to pick a suitable native device, try an LLVM one.
+  if (llvmBinary != (uint32_t)-1) {
+    *pSelectedBinary = llvmBinary;
+    return UR_RESULT_SUCCESS;
+  }
+#endif
+  // Try to see if we have an old-style target format
+  if (oldNativeBinary != (uint32_t)-1) {
+    *pSelectedBinary = oldNativeBinary;
+    return UR_RESULT_SUCCESS;
   }
 
   // No image can be loaded for the given device

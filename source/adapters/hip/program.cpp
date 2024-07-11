@@ -85,12 +85,15 @@ ur_program_handle_t_::setMetadata(const ur_program_metadata_t *Metadata,
   for (size_t i = 0; i < Length; ++i) {
     const ur_program_metadata_t MetadataElement = Metadata[i];
     std::string MetadataElementName{MetadataElement.pName};
+    std::cout << "------- MetadataElementName " << MetadataElementName << "\n";
 
     auto [Prefix, Tag] = splitMetadataName(MetadataElementName);
+    std::cout << "------- Prefix, Tag " << Prefix << ", " << Tag << "\n";
 
     if (MetadataElementName ==
         __SYCL_UR_PROGRAM_METADATA_TAG_NEED_FINALIZATION) {
       assert(MetadataElement.type == UR_PROGRAM_METADATA_TYPE_UINT32);
+      std::cout << "------- setting finalization\n";
       IsRelocatable = MetadataElement.value.data32;
     } else if (Tag == __SYCL_UR_PROGRAM_METADATA_GLOBAL_ID_MAPPING) {
       const char *MetadataValPtr =
@@ -201,7 +204,9 @@ ur_result_t ur_program_handle_t_::finalizeRelocatable() {
 }
 
 ur_result_t ur_program_handle_t_::buildProgram(const char *BuildOptions) {
+  std::cout << "---- Build prog\n";
   if (IsRelocatable) {
+    std::cout << "---- Relocate\n";
     if (finalizeRelocatable() != UR_RESULT_SUCCESS) {
       BuildStatus = UR_PROGRAM_BUILD_STATUS_ERROR;
       return UR_RESULT_ERROR_PROGRAM_BUILD_FAILURE;

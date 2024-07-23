@@ -11,6 +11,8 @@
 #include "program.hpp"
 #include "ur_util.hpp"
 
+#include <fstream>
+
 #ifdef SYCL_ENABLE_KERNEL_FUSION
 #ifdef UR_COMGR_VERSION4_INCLUDE
 #include <amd_comgr.h>
@@ -210,6 +212,11 @@ ur_result_t ur_program_handle_t_::buildProgram(const char *BuildOptions) {
     if (finalizeRelocatable() != UR_RESULT_SUCCESS) {
       BuildStatus = UR_PROGRAM_BUILD_STATUS_ERROR;
       return UR_RESULT_ERROR_PROGRAM_BUILD_FAILURE;
+    }
+    {
+      std::ofstream Obj("AMDKernelLib");
+      Obj.write(ExecutableCache.data(), ExecutableCache.size());
+      Obj.close();
     }
     IsRelocatable = false;
   }

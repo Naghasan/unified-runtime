@@ -119,10 +119,10 @@ inline uint64_t GetSizeAndRedzoneSizeForLocal(uint64_t Size,
 #define UR_CALL(Call)                                                          \
     {                                                                          \
         if (PrintTrace)                                                        \
-            context.logger.debug("UR ---> {}", #Call);                         \
+            getContext()->logger.debug("UR ---> {}", #Call);                   \
         ur_result_t Result = (Call);                                           \
         if (PrintTrace)                                                        \
-            context.logger.debug("UR <--- {}({})", #Call, Result);             \
+            getContext()->logger.debug("UR <--- {}({})", #Call, Result);       \
         if (Result != UR_RESULT_SUCCESS)                                       \
             return Result;                                                     \
     }
@@ -137,6 +137,21 @@ struct SourceInfo {
 };
 
 enum class DeviceType : uint64_t { UNKNOWN = 0, CPU, GPU_PVC, GPU_DG2 };
+
+inline const char *ToString(DeviceType Type) {
+    switch (Type) {
+    case DeviceType::UNKNOWN:
+        return "UNKNOWN";
+    case DeviceType::CPU:
+        return "CPU";
+    case DeviceType::GPU_PVC:
+        return "PVC";
+    case DeviceType::GPU_DG2:
+        return "DG2";
+    default:
+        return "UNKNOWN";
+    }
+}
 
 bool IsInASanContext();
 

@@ -8168,11 +8168,35 @@ __urdlllocal ur_result_t UR_APICALL urEnqueueKernelLaunchCustomExp(
     // convert loader handle to platform handle
     hKernel = reinterpret_cast<ur_kernel_object_t *>(hKernel)->handle;
 
+    // convert loader handles to platform handles
+    auto phEventWaitListLocal =
+        std::vector<ur_event_handle_t>(numEventsInWaitList);
+    for (size_t i = 0; i < numEventsInWaitList; ++i) {
+        phEventWaitListLocal[i] =
+            reinterpret_cast<ur_event_object_t *>(phEventWaitList[i])->handle;
+    }
+
     // forward to device-platform
     result = pfnKernelLaunchCustomExp(hQueue, hKernel, workDim, pGlobalWorkSize,
                                       pLocalWorkSize, numPropsInLaunchPropList,
                                       launchPropList, numEventsInWaitList,
-                                      phEventWaitList, phEvent);
+                                      phEventWaitListLocal.data(), phEvent);
+
+    // In the event of ERROR_ADAPTER_SPECIFIC we should still attempt to wrap any output handles below.
+    if (UR_RESULT_SUCCESS != result &&
+        UR_RESULT_ERROR_ADAPTER_SPECIFIC != result) {
+        return result;
+    }
+    try {
+        // convert platform handle to loader handle
+        if (nullptr != phEvent) {
+            *phEvent = reinterpret_cast<ur_event_handle_t>(
+                context->factories.ur_event_factory.getInstance(*phEvent,
+                                                                dditable));
+        }
+    } catch (std::bad_alloc &) {
+        result = UR_RESULT_ERROR_OUT_OF_HOST_MEMORY;
+    }
 
     return result;
 }

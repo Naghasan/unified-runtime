@@ -403,11 +403,13 @@ UR_APIEXPORT ur_result_t UR_APICALL urEnqueueEventsWait(
                                         phEventWaitList, phEvent);
 }
 
-UR_APIEXPORT ur_result_t UR_APICALL urEnqueueKernelLaunch(
-    ur_queue_handle_t hQueue, ur_kernel_handle_t hKernel, uint32_t workDim,
-    const size_t *pGlobalWorkOffset, const size_t *pGlobalWorkSize,
-    const size_t *pLocalWorkSize, uint32_t numEventsInWaitList,
-    const ur_event_handle_t *phEventWaitList, ur_event_handle_t *phEvent) {
+static ur_result_t
+enqueueKernelLaunch(ur_queue_handle_t hQueue, ur_kernel_handle_t hKernel,
+                    uint32_t workDim, const size_t *pGlobalWorkOffset,
+                    const size_t *pGlobalWorkSize, const size_t *pLocalWorkSize,
+                    uint32_t numEventsInWaitList,
+                    const ur_event_handle_t *phEventWaitList,
+                    ur_event_handle_t *phEvent, size_t WorkGroupMemory) {
   // Preconditions
   UR_ASSERT(hQueue->getDevice() == hKernel->getProgram()->getDevice(),
             UR_RESULT_ERROR_INVALID_KERNEL);
@@ -425,6 +427,9 @@ UR_APIEXPORT ur_result_t UR_APICALL urEnqueueKernelLaunch(
   size_t ThreadsPerBlock[3] = {32u, 1u, 1u};
   size_t BlocksPerGrid[3] = {1u, 1u, 1u};
 
+  // Set work group memory so we can compute the whole memory requirement
+  if (WorkGroupMemory)
+    hKernel->setWorkGroupMemory(WorkGroupMemory);
   uint32_t LocalSize = hKernel->getLocalSize();
   CUfunction CuFunc = hKernel->get();
 
@@ -487,6 +492,16 @@ UR_APIEXPORT ur_result_t UR_APICALL urEnqueueKernelLaunch(
   return UR_RESULT_SUCCESS;
 }
 
+UR_APIEXPORT ur_result_t UR_APICALL urEnqueueKernelLaunch(
+    ur_queue_handle_t hQueue, ur_kernel_handle_t hKernel, uint32_t workDim,
+    const size_t *pGlobalWorkOffset, const size_t *pGlobalWorkSize,
+    const size_t *pLocalWorkSize, uint32_t numEventsInWaitList,
+    const ur_event_handle_t *phEventWaitList, ur_event_handle_t *phEvent) {
+  return enqueueKernelLaunch(hQueue, hKernel, workDim, pGlobalWorkOffset,
+                             pGlobalWorkSize, pLocalWorkSize,
+                             numEventsInWaitList, phEventWaitList, phEvent, 0);
+}
+
 UR_APIEXPORT ur_result_t UR_APICALL urEnqueueCooperativeKernelLaunchExp(
     ur_queue_handle_t hQueue, ur_kernel_handle_t hKernel, uint32_t workDim,
     const size_t *pGlobalWorkOffset, const size_t *pGlobalWorkSize,
@@ -513,10 +528,22 @@ UR_APIEXPORT ur_result_t UR_APICALL urEnqueueKernelLaunchCustomExp(
     uint32_t numEventsInWaitList, const ur_event_handle_t *phEventWaitList,
     ur_event_handle_t *phEvent) {
 
-  if (numPropsInLaunchPropList == 0) {
-    urEnqueueKernelLaunch(hQueue, hKernel, workDim, nullptr, pGlobalWorkSize,
-                          pLocalWorkSize, numEventsInWaitList, phEventWaitList,
-                          phEvent);
+  size_t WorkGroupMemory = [&]() -> size_t {
+    const ur_exp_launch_property_t *WorkGroupMemoryProp = std::find_if(
+        launchPropList, launchPropList + numPropsInLaunchPropList,
+        [](const ur_exp_launch_property_t &Prop) {
+          return Prop.id == UR_EXP_LAUNCH_PROPERTY_ID_WORK_GROUP_MEMORY;
+        });
+    if (WorkGroupMemoryProp != launchPropList + numPropsInLaunchPropList)
+      return WorkGroupMemoryProp->value.workgroup_mem_size;
+    return 0;
+  }();
+
+  if (numPropsInLaunchPropList == 0 ||
+      (WorkGroupMemory && numPropsInLaunchPropList == 1)) {
+    enqueueKernelLaunch(hQueue, hKernel, workDim, nullptr, pGlobalWorkSize,
+                        pLocalWorkSize, numEventsInWaitList, phEventWaitList,
+                        phEvent, WorkGroupMemory);
   }
 #if CUDA_VERSION >= 11080
   // Preconditions
@@ -529,7 +556,8 @@ UR_APIEXPORT ur_result_t UR_APICALL urEnqueueKernelLaunchCustomExp(
     return UR_RESULT_ERROR_INVALID_NULL_POINTER;
   }
 
-  std::vector<CUlaunchAttribute> launch_attribute(numPropsInLaunchPropList);
+  std::vector<CUlaunchAttribute> launch_attribute;
+  launch_attribute.reserve(numPropsInLaunchPropList);
 
   // Early exit for zero size kernel
   if (*pGlobalWorkSize == 0) {
@@ -542,17 +570,21 @@ UR_APIEXPORT ur_result_t UR_APICALL urEnqueueKernelLaunchCustomExp(
   size_t ThreadsPerBlock[3] = {32u, 1u, 1u};
   size_t BlocksPerGrid[3] = {1u, 1u, 1u};
 
+  // Set work group memory so we can compute the whole memory requirement
+  if (WorkGroupMemory)
+    hKernel->setWorkGroupMemory(WorkGroupMemory);
   uint32_t LocalSize = hKernel->getLocalSize();
   CUfunction CuFunc = hKernel->get();
 
   for (uint32_t i = 0; i < numPropsInLaunchPropList; i++) {
     switch (launchPropList[i].id) {
     case UR_EXP_LAUNCH_PROPERTY_ID_IGNORE: {
+      launch_attribute.push_back({});
       launch_attribute[i].id = CU_LAUNCH_ATTRIBUTE_IGNORE;
       break;
     }
     case UR_EXP_LAUNCH_PROPERTY_ID_CLUSTER_DIMENSION: {
-
+      launch_attribute.push_back({});
       launch_attribute[i].id = CU_LAUNCH_ATTRIBUTE_CLUSTER_DIMENSION;
       // Note that cuda orders from right to left wrt SYCL dimensional order.
       if (workDim == 3) {
@@ -584,9 +616,13 @@ UR_APIEXPORT ur_result_t UR_APICALL urEnqueueKernelLaunchCustomExp(
       break;
     }
     case UR_EXP_LAUNCH_PROPERTY_ID_COOPERATIVE: {
+      launch_attribute.push_back({});
       launch_attribute[i].id = CU_LAUNCH_ATTRIBUTE_COOPERATIVE;
       launch_attribute[i].value.cooperative =
           launchPropList[i].value.cooperative;
+      break;
+    }
+    case UR_EXP_LAUNCH_PROPERTY_ID_WORK_GROUP_MEMORY: {
       break;
     }
     default: {

@@ -770,8 +770,8 @@ ur_result_t ur_event_handle_t_::getOrCreateHostVisibleEvent(
 UR_APIEXPORT ur_result_t UR_APICALL urEventWait(
     uint32_t NumEvents, ///< [in] number of events in the event list
     const ur_event_handle_t
-        *EventWaitList ///< [in][range(0, numEvents)] pointer to a list of
-                       ///< events to wait for completion
+        *EventWaitList ///< [in][range(0, numEvents)] pointer to a list
+                       ///< of events to wait for completion
 ) {
   for (uint32_t I = 0; I < NumEvents; I++) {
     auto e = EventWaitList[I];

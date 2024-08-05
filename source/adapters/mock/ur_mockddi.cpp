@@ -9684,6 +9684,10 @@ __urdlllocal ur_result_t UR_APICALL urEnqueueKernelLaunchCustomExp(
         result = replaceCallback(&params);
     } else {
 
+        // optional output handle
+        if (phEvent) {
+            *phEvent = mock::createDummyHandle<ur_event_handle_t>();
+        }
         result = UR_RESULT_SUCCESS;
     }
 

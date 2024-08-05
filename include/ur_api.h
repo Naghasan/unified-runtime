@@ -9123,6 +9123,7 @@ typedef enum ur_exp_launch_property_id_t {
     UR_EXP_LAUNCH_PROPERTY_ID_IGNORE = 0,            ///< The property has no effect
     UR_EXP_LAUNCH_PROPERTY_ID_COOPERATIVE = 1,       ///< Whether to launch a cooperative kernel
     UR_EXP_LAUNCH_PROPERTY_ID_CLUSTER_DIMENSION = 2, ///< work-group cluster dimensions
+    UR_EXP_LAUNCH_PROPERTY_ID_WORK_GROUP_MEMORY = 3, ///< Implicit work group memory allocation
     /// @cond
     UR_EXP_LAUNCH_PROPERTY_ID_FORCE_UINT32 = 0x7fffffff
     /// @endcond
@@ -9136,10 +9137,12 @@ typedef enum ur_exp_launch_property_id_t {
 ///   _Analogues_
 ///     - **CUlaunchAttributeValue**
 typedef union ur_exp_launch_property_value_t {
-    uint32_t clusterDim[3]; ///< [in] dimensions of the cluster (units of work-group) (x, y, z). Each
-                            ///< value must be a divisor of the corresponding global work-size
-                            ///< dimension (in units of work-group).
-    int cooperative;        ///< [in] non-zero value indicates a cooperative kernel
+    uint32_t clusterDim[3];    ///< [in] dimensions of the cluster (units of work-group) (x, y, z). Each
+                               ///< value must be a divisor of the corresponding global work-size
+                               ///< dimension (in units of work-group).
+    int cooperative;           ///< [in] non-zero value indicates a cooperative kernel
+    size_t workgroup_mem_size; ///< [in] non-zero value indicates the amount of work group memory to
+                               ///< allocate
 
 } ur_exp_launch_property_value_t;
 

@@ -542,9 +542,10 @@ UR_APIEXPORT ur_result_t UR_APICALL urEnqueueKernelLaunchCustomExp(
 
   if (numPropsInLaunchPropList == 0 ||
       (WorkGroupMemory && numPropsInLaunchPropList == 1)) {
-    enqueueKernelLaunch(hQueue, hKernel, workDim, pGlobalWorkOffset,
-                        pGlobalWorkSize, pLocalWorkSize, numEventsInWaitList,
-                        phEventWaitList, phEvent, WorkGroupMemory);
+    return enqueueKernelLaunch(hQueue, hKernel, workDim, pGlobalWorkOffset,
+                               pGlobalWorkSize, pLocalWorkSize,
+                               numEventsInWaitList, phEventWaitList, phEvent,
+                               WorkGroupMemory);
   }
 #if CUDA_VERSION >= 11080
   // Preconditions

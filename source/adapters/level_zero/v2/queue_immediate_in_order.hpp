@@ -10,8 +10,9 @@
 #pragma once
 
 #include "../common.hpp"
-#include "../queue.hpp"
+#include "../device.hpp"
 #include "context.hpp"
+#include "queue_api.hpp"
 
 #include "ur/ur.hpp"
 
@@ -20,7 +21,7 @@ namespace v2 {
 using queue_group_type = ur_device_handle_t_::queue_group_info_t::type;
 
 struct ur_command_list_handler_t {
-  ur_command_list_handler_t(v2::ur_context_handle_t hContext,
+  ur_command_list_handler_t(ur_context_handle_t hContext,
                             ur_device_handle_t hDevice,
                             const ur_queue_properties_t *pProps,
                             queue_group_type type);
@@ -34,7 +35,7 @@ private:
   ur_command_list_handler_t computeHandler;
 
 public:
-  ur_queue_immediate_in_order_t(v2::ur_context_handle_t, ur_device_handle_t,
+  ur_queue_immediate_in_order_t(ur_context_handle_t, ur_device_handle_t,
                                 const ur_queue_properties_t *);
 
   ur_result_t queueGetInfo(ur_queue_info_t propName, size_t propSize,
@@ -189,12 +190,12 @@ public:
       const ur_event_handle_t *phEventWaitList,
       ur_event_handle_t *phEvent) override;
   ur_result_t bindlessImagesWaitExternalSemaphoreExp(
-      ur_exp_interop_semaphore_handle_t hSemaphore, bool hasWaitValue,
+      ur_exp_external_semaphore_handle_t hSemaphore, bool hasWaitValue,
       uint64_t waitValue, uint32_t numEventsInWaitList,
       const ur_event_handle_t *phEventWaitList,
       ur_event_handle_t *phEvent) override;
   ur_result_t bindlessImagesSignalExternalSemaphoreExp(
-      ur_exp_interop_semaphore_handle_t hSemaphore, bool hasSignalValue,
+      ur_exp_external_semaphore_handle_t hSemaphore, bool hasSignalValue,
       uint64_t signalValue, uint32_t numEventsInWaitList,
       const ur_event_handle_t *phEventWaitList,
       ur_event_handle_t *phEvent) override;

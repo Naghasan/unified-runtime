@@ -6,6 +6,11 @@
 cmake_minimum_required(VERSION 3.20.0 FATAL_ERROR)
 project(unified-runtime VERSION 0.10.0)
 
+# Check if unified runtime is built as a standalone project.
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR OR UR_STANDALONE_BUILD)
+    set(UR_STANDALONE_BUILD TRUE)
+endif()
+
 include(GNUInstallDirs)
 include(CheckCXXSourceCompiles)
 include(CMakePackageConfigHelpers)
@@ -37,6 +42,7 @@ option(UR_USE_MSAN "enable MemorySanitizer" OFF)
 option(UR_USE_TSAN "enable ThreadSanitizer" OFF)
 option(UR_ENABLE_TRACING "enable api tracing through xpti" OFF)
 option(UR_ENABLE_SANITIZER "enable device sanitizer" ON)
+option(UR_ENABLE_SYMBOLIZER "enable symoblizer for sanitizer" OFF)
 option(UMF_BUILD_SHARED_LIBRARY "Build UMF as shared library" ON)
 option(UMF_ENABLE_POOL_TRACKING "Build UMF with pool tracking" ON)
 option(UR_BUILD_ADAPTER_L0 "Build the Level-Zero adapter" OFF)
@@ -45,11 +51,14 @@ option(UR_BUILD_ADAPTER_CUDA "Build the CUDA adapter" OFF)
 option(UR_BUILD_ADAPTER_HIP "Build the HIP adapter" OFF)
 option(UR_BUILD_ADAPTER_NATIVE_CPU "Build the Native-CPU adapter" OFF)
 option(UR_BUILD_ADAPTER_ALL "Build all currently supported adapters" OFF)
+option(UR_BUILD_ADAPTER_L0_V2 "Build the (experimental) Level-Zero v2 adapter" OFF)
 option(UR_BUILD_EXAMPLE_CODEGEN "Build the codegen example." OFF)
 option(VAL_USE_LIBBACKTRACE_BACKTRACE "enable libbacktrace validation backtrace for linux" OFF)
 option(UR_ENABLE_ASSERTIONS "Enable assertions for all build types" OFF)
 option(UR_BUILD_XPTI_LIBS "Build the XPTI libraries when tracing is enabled" ON)
 option(UR_STATIC_LOADER "Build loader as a static library" OFF)
+option(UR_FORCE_LIBSTDCXX "Force use of libstdc++ in a build using libc++ on Linux" OFF)
+option(UR_ENABLE_LATENCY_HISTOGRAM "Enable latncy histogram" OFF)
 set(UR_DPCXX "" CACHE FILEPATH "Path of the DPC++ compiler executable")
 set(UR_DPCXX_BUILD_FLAGS "" CACHE STRING "Build flags to pass to DPC++ when compiling device programs")
 set(UR_SYCL_LIBRARY_DIR "" CACHE PATH
@@ -88,6 +97,21 @@ if(CMAKE_SYSTEM_NAME STREQUAL Windows AND NOT CMAKE_GENERATOR STREQUAL Ninja)
     set(CUSTOM_COMMAND_BINARY_DIR ${CUSTOM_COMMAND_BINARY_DIR}/$<CONFIG>)
 endif()
 
+if(UR_FORCE_LIBSTDCXX AND CMAKE_SYSTEM_NAME STREQUAL Linux)
+    # Remove flags to specify using libc++ or static libstdc++ in order to
+    # support sitatuions where the libstdc++ ABI is required.
+    foreach(flags CMAKE_CXX_FLAGS CMAKE_EXE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS)
+        string(REPLACE "-stdlib=libc++" "" ${flags} "${${flags}}")
+        string(REPLACE "-static-libstdc++" "" ${flags} "${${flags}}")
+    endforeach()
+    # Globally link against pthread, this is necessary when forcing use of
+    # libstdc++ in a libc++ build as the FindThreads module may have already
+    # been invoked and detected that pthread symbols are provided by libc++
+    # which is not the case for libstdc++.
+    add_compile_options(-pthread)
+    link_libraries(pthread)
+endif()
+
 if(NOT MSVC)
     # Determine if libstdc++ is being used.
     check_cxx_source_compiles("
@@ -97,7 +121,7 @@ if(NOT MSVC)
         #endif
         int main() {}"
         USING_LIBSTDCXX)
-    if(USING_LIBSTDCXX)
+    if(UR_FORCE_LIBSTDCXX OR USING_LIBSTDCXX)
         # Support older versions of GCC where the <filesystem> header is not
         # available and <experimental/filesystem> must be used instead. This
         # requires linking against libstdc++fs.a, on systems where <filesystem>
@@ -162,6 +186,14 @@ if(UR_ENABLE_SANITIZER)
         set(UR_ENABLE_SANITIZER OFF)
     else()
         add_compile_definitions(UR_ENABLE_SANITIZER)
+    endif()
+
+    if(UR_ENABLE_SYMBOLIZER AND UR_STANDALONE_BUILD)
+        find_package(LLVM REQUIRED)
+    endif()
+else()
+    if(UR_ENABLE_SYMBOLIZER)
+        message(FATAL_ERROR "Symbolizer must be enabled with Sanitizer layer")
     endif()
 endif()
 

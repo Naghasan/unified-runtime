@@ -41,7 +41,7 @@ static ze_command_queue_priority_t getZePriority(ur_queue_flags_t flags) {
 }
 
 ur_command_list_handler_t::ur_command_list_handler_t(
-    v2::ur_context_handle_t hContext, ur_device_handle_t hDevice,
+    ur_context_handle_t hContext, ur_device_handle_t hDevice,
     const ur_queue_properties_t *pProps, queue_group_type type)
     : commandList(hContext->commandListCache.getImmediateCommandList(
           hDevice->ZeDevice, true, getZeOrdinal(hDevice, type),
@@ -50,7 +50,7 @@ ur_command_list_handler_t::ur_command_list_handler_t(
           getZeIndex(pProps))) {}
 
 ur_queue_immediate_in_order_t::ur_queue_immediate_in_order_t(
-    v2::ur_context_handle_t hContext, ur_device_handle_t hDevice,
+    ur_context_handle_t hContext, ur_device_handle_t hDevice,
     const ur_queue_properties_t *pProps)
     : copyHandler(hContext, hDevice, pProps, queue_group_type::MainCopy),
       computeHandler(hContext, hDevice, pProps, queue_group_type::Compute) {}
@@ -504,7 +504,7 @@ ur_result_t ur_queue_immediate_in_order_t::bindlessImagesImageCopyExp(
 
 ur_result_t
 ur_queue_immediate_in_order_t::bindlessImagesWaitExternalSemaphoreExp(
-    ur_exp_interop_semaphore_handle_t hSemaphore, bool hasWaitValue,
+    ur_exp_external_semaphore_handle_t hSemaphore, bool hasWaitValue,
     uint64_t waitValue, uint32_t numEventsInWaitList,
     const ur_event_handle_t *phEventWaitList, ur_event_handle_t *phEvent) {
   std::ignore = hSemaphore;
@@ -518,7 +518,7 @@ ur_queue_immediate_in_order_t::bindlessImagesWaitExternalSemaphoreExp(
 
 ur_result_t
 ur_queue_immediate_in_order_t::bindlessImagesSignalExternalSemaphoreExp(
-    ur_exp_interop_semaphore_handle_t hSemaphore, bool hasSignalValue,
+    ur_exp_external_semaphore_handle_t hSemaphore, bool hasSignalValue,
     uint64_t signalValue, uint32_t numEventsInWaitList,
     const ur_event_handle_t *phEventWaitList, ur_event_handle_t *phEvent) {
   std::ignore = hSemaphore;

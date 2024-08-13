@@ -424,9 +424,7 @@ ur_exp_command_buffer_handle_t_::ur_exp_command_buffer_handle_t_(
   urDeviceRetain(Device);
 }
 
-// The ur_exp_command_buffer_handle_t_ destructor releases all the memory
-// objects allocated for command_buffer management.
-ur_exp_command_buffer_handle_t_::~ur_exp_command_buffer_handle_t_() {
+void ur_exp_command_buffer_handle_t_::cleanupCommandBufferResources() {
   // Release the memory allocated to the Context stored in the command_buffer
   urContextRelease(Context);
 
@@ -612,8 +610,8 @@ ur_result_t createMainCommandList(ur_context_handle_t Context,
 bool canBeInOrder(ur_context_handle_t Context,
                   const ur_exp_command_buffer_desc_t *CommandBufferDesc) {
   // In-order command-lists are not available in old driver version.
-  bool CompatibleDriver = isDriverVersionNewerOrSimilar(
-      Context->getPlatform()->ZeDriver, 1, 3, L0_DRIVER_INORDER_MIN_VERSION);
+  bool CompatibleDriver = Context->getPlatform()->isDriverVersionNewerOrSimilar(
+      1, 3, L0_DRIVER_INORDER_MIN_VERSION);
   return CompatibleDriver
              ? (CommandBufferDesc ? CommandBufferDesc->isInOrder : false)
              : false;
@@ -703,6 +701,7 @@ urCommandBufferReleaseExp(ur_exp_command_buffer_handle_t CommandBuffer) {
   if (!CommandBuffer->RefCount.decrementAndTest())
     return UR_RESULT_SUCCESS;
 
+  CommandBuffer->cleanupCommandBufferResources();
   delete CommandBuffer;
   return UR_RESULT_SUCCESS;
 }
@@ -922,6 +921,13 @@ UR_APIEXPORT ur_result_t UR_APICALL urCommandBufferAppendUSMMemcpyExp(
 
   bool PreferCopyEngine = !IsDevicePointer(CommandBuffer->Context, Src) ||
                           !IsDevicePointer(CommandBuffer->Context, Dst);
+  // For better performance, Copy Engines are not preferred given Shared
+  // pointers on DG2.
+  if (CommandBuffer->Device->isDG2() &&
+      (IsSharedPointer(CommandBuffer->Context, Src) ||
+       IsSharedPointer(CommandBuffer->Context, Dst))) {
+    PreferCopyEngine = false;
+  }
   PreferCopyEngine |= UseCopyEngineForD2DCopy;
 
   return enqueueCommandBufferMemCopyHelper(
@@ -1294,13 +1300,14 @@ ur_result_t waitForDependencies(ur_exp_command_buffer_handle_t CommandBuffer,
  * @param[in] CommandBuffer The command buffer.
  * @param[in] Queue The UR queue used to submit the command buffer.
  * @param[in] SignalCommandList The command-list to append the barrier to.
- * @param[out] Event The host visible event which will be returned to the user.
+ * @param[out][optional] Event The host visible event which will be returned
+ * to the user, if user passed an output parameter to the UR API.
  * @return UR_RESULT_SUCCESS or an error code on failure
  */
 ur_result_t createUserEvent(ur_exp_command_buffer_handle_t CommandBuffer,
                             ur_queue_handle_legacy_t Queue,
                             ur_command_list_ptr_t SignalCommandList,
-                            ur_event_handle_t &Event) {
+                            ur_event_handle_t *Event) {
   // Execution event for this enqueue of the UR command-buffer
   ur_event_handle_t RetEvent{};
 
@@ -1336,7 +1343,9 @@ ur_result_t createUserEvent(ur_exp_command_buffer_handle_t CommandBuffer,
                 &(CommandBuffer->SignalEvent->ZeEvent)));
   }
 
-  Event = RetEvent;
+  if (Event) {
+    *Event = RetEvent;
+  }
 
   return UR_RESULT_SUCCESS;
 }
@@ -1399,9 +1408,9 @@ UR_APIEXPORT ur_result_t UR_APICALL urCommandBufferEnqueueExp(
   ZE2UR_CALL(zeCommandListAppendEventReset,
              (SignalCommandList->first, CommandBuffer->AllResetEvent->ZeEvent));
 
-  if (Event) {
-    UR_CALL(createUserEvent(CommandBuffer, Queue, SignalCommandList, *Event));
-  }
+  // Appends a wait on the main command-list signal and registers output Event
+  // parameter with signal command-list completing.
+  UR_CALL(createUserEvent(CommandBuffer, Queue, SignalCommandList, Event));
 
   UR_CALL(Queue->executeCommandList(SignalCommandList, false, false));
 

@@ -1002,11 +1002,11 @@ UR_APIEXPORT ur_result_t UR_APICALL urDeviceGetInfo(
     // L0 does not support creation of images from individual mipmap levels.
     return ReturnValue(false);
   }
-  case UR_DEVICE_INFO_INTEROP_MEMORY_IMPORT_SUPPORT_EXP: {
+  case UR_DEVICE_INFO_EXTERNAL_MEMORY_IMPORT_SUPPORT_EXP: {
     // L0 does not support importing external memory.
     return ReturnValue(false);
   }
-  case UR_DEVICE_INFO_INTEROP_SEMAPHORE_IMPORT_SUPPORT_EXP: {
+  case UR_DEVICE_INFO_EXTERNAL_SEMAPHORE_IMPORT_SUPPORT_EXP: {
     // L0 does not support importing external semaphores.
     return ReturnValue(false);
   }
@@ -1173,12 +1173,10 @@ bool ur_device_handle_t_::useDriverInOrderLists() {
   // Use in-order lists implementation from L0 driver instead
   // of adapter's implementation.
 
-  ze_driver_handle_t ZeDriver = this->Platform->ZeDriver;
-
   static const bool UseDriverInOrderLists = [&] {
     const char *UrRet = std::getenv("UR_L0_USE_DRIVER_INORDER_LISTS");
-    bool CompatibleDriver = isDriverVersionNewerOrSimilar(
-        ZeDriver, 1, 3, L0_DRIVER_INORDER_MIN_VERSION);
+    bool CompatibleDriver = this->Platform->isDriverVersionNewerOrSimilar(
+        1, 3, L0_DRIVER_INORDER_MIN_VERSION);
     if (!UrRet)
       return CompatibleDriver;
     return std::atoi(UrRet) != 0;

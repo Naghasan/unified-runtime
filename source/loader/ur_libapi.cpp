@@ -8605,6 +8605,7 @@ ur_result_t UR_APICALL urEnqueueTimestampRecordingExp(
 ///         + NULL == hQueue
 ///         + NULL == hKernel
 ///     - ::UR_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `NULL == pGlobalWorkOffset`
 ///         + `NULL == pGlobalWorkSize`
 ///         + `NULL == launchPropList`
 ///         + NULL == pGlobalWorkSize
@@ -8634,6 +8635,9 @@ ur_result_t UR_APICALL urEnqueueKernelLaunchCustomExp(
         workDim, ///< [in] number of dimensions, from 1 to 3, to specify the global and
                  ///< work-group work-items
     const size_t *
+        pGlobalWorkOffset, ///< [in] pointer to an array of workDim unsigned values that specify the
+    ///< offset used to calculate the global ID of a work-item
+    const size_t *
         pGlobalWorkSize, ///< [in] pointer to an array of workDim unsigned values that specify the
     ///< number of global work-items in workDim that will execute the kernel
     ///< function
@@ -8661,10 +8665,10 @@ ur_result_t UR_APICALL urEnqueueKernelLaunchCustomExp(
         return UR_RESULT_ERROR_UNINITIALIZED;
     }
 
-    return pfnKernelLaunchCustomExp(hQueue, hKernel, workDim, pGlobalWorkSize,
-                                    pLocalWorkSize, numPropsInLaunchPropList,
-                                    launchPropList, numEventsInWaitList,
-                                    phEventWaitList, phEvent);
+    return pfnKernelLaunchCustomExp(
+        hQueue, hKernel, workDim, pGlobalWorkOffset, pGlobalWorkSize,
+        pLocalWorkSize, numPropsInLaunchPropList, launchPropList,
+        numEventsInWaitList, phEventWaitList, phEvent);
 } catch (...) {
     return exceptionToResult(std::current_exception());
 }

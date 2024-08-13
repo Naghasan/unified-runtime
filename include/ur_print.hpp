@@ -14489,6 +14489,12 @@ inline std::ostream &operator<<(std::ostream &os, [[maybe_unused]] const struct 
     os << *(params->pworkDim);
 
     os << ", ";
+    os << ".pGlobalWorkOffset = ";
+
+    ur::details::printPtr(os,
+                          *(params->ppGlobalWorkOffset));
+
+    os << ", ";
     os << ".pGlobalWorkSize = ";
 
     ur::details::printPtr(os,

@@ -512,8 +512,9 @@ UR_APIEXPORT ur_result_t UR_APICALL urEnqueueCooperativeKernelLaunchExp(
     coop_prop.id = UR_EXP_LAUNCH_PROPERTY_ID_COOPERATIVE;
     coop_prop.value.cooperative = 1;
     return urEnqueueKernelLaunchCustomExp(
-        hQueue, hKernel, workDim, pGlobalWorkSize, pLocalWorkSize, 1,
-        &coop_prop, numEventsInWaitList, phEventWaitList, phEvent);
+        hQueue, hKernel, workDim, pGlobalWorkOffset, pGlobalWorkSize,
+        pLocalWorkSize, 1, &coop_prop, numEventsInWaitList, phEventWaitList,
+        phEvent);
   }
   return urEnqueueKernelLaunch(hQueue, hKernel, workDim, pGlobalWorkOffset,
                                pGlobalWorkSize, pLocalWorkSize,
@@ -522,8 +523,8 @@ UR_APIEXPORT ur_result_t UR_APICALL urEnqueueCooperativeKernelLaunchExp(
 
 UR_APIEXPORT ur_result_t UR_APICALL urEnqueueKernelLaunchCustomExp(
     ur_queue_handle_t hQueue, ur_kernel_handle_t hKernel, uint32_t workDim,
-    const size_t *pGlobalWorkSize, const size_t *pLocalWorkSize,
-    uint32_t numPropsInLaunchPropList,
+    const size_t *pGlobalWorkOffset, const size_t *pGlobalWorkSize,
+    const size_t *pLocalWorkSize, uint32_t numPropsInLaunchPropList,
     const ur_exp_launch_property_t *launchPropList,
     uint32_t numEventsInWaitList, const ur_event_handle_t *phEventWaitList,
     ur_event_handle_t *phEvent) {
@@ -541,9 +542,9 @@ UR_APIEXPORT ur_result_t UR_APICALL urEnqueueKernelLaunchCustomExp(
 
   if (numPropsInLaunchPropList == 0 ||
       (WorkGroupMemory && numPropsInLaunchPropList == 1)) {
-    enqueueKernelLaunch(hQueue, hKernel, workDim, nullptr, pGlobalWorkSize,
-                        pLocalWorkSize, numEventsInWaitList, phEventWaitList,
-                        phEvent, WorkGroupMemory);
+    enqueueKernelLaunch(hQueue, hKernel, workDim, pGlobalWorkOffset,
+                        pGlobalWorkSize, pLocalWorkSize, numEventsInWaitList,
+                        phEventWaitList, phEvent, WorkGroupMemory);
   }
 #if CUDA_VERSION >= 11080
   // Preconditions
@@ -635,8 +636,8 @@ UR_APIEXPORT ur_result_t UR_APICALL urEnqueueKernelLaunchCustomExp(
   // using the standard UR_CHECK_ERROR
   if (ur_result_t Ret =
           setKernelParams(hQueue->getContext(), hQueue->Device, workDim,
-                          nullptr, pGlobalWorkSize, pLocalWorkSize, hKernel,
-                          CuFunc, ThreadsPerBlock, BlocksPerGrid);
+                          pGlobalWorkOffset, pGlobalWorkSize, pLocalWorkSize,
+                          hKernel, CuFunc, ThreadsPerBlock, BlocksPerGrid);
       Ret != UR_RESULT_SUCCESS)
     return Ret;
 

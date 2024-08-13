@@ -8169,6 +8169,9 @@ __urdlllocal ur_result_t UR_APICALL urEnqueueKernelLaunchCustomExp(
         workDim, ///< [in] number of dimensions, from 1 to 3, to specify the global and
                  ///< work-group work-items
     const size_t *
+        pGlobalWorkOffset, ///< [in] pointer to an array of workDim unsigned values that specify the
+    ///< offset used to calculate the global ID of a work-item
+    const size_t *
         pGlobalWorkSize, ///< [in] pointer to an array of workDim unsigned values that specify the
     ///< number of global work-items in workDim that will execute the kernel
     ///< function
@@ -8217,10 +8220,10 @@ __urdlllocal ur_result_t UR_APICALL urEnqueueKernelLaunchCustomExp(
     }
 
     // forward to device-platform
-    result = pfnKernelLaunchCustomExp(hQueue, hKernel, workDim, pGlobalWorkSize,
-                                      pLocalWorkSize, numPropsInLaunchPropList,
-                                      launchPropList, numEventsInWaitList,
-                                      phEventWaitListLocal.data(), phEvent);
+    result = pfnKernelLaunchCustomExp(
+        hQueue, hKernel, workDim, pGlobalWorkOffset, pGlobalWorkSize,
+        pLocalWorkSize, numPropsInLaunchPropList, launchPropList,
+        numEventsInWaitList, phEventWaitListLocal.data(), phEvent);
 
     // In the event of ERROR_ADAPTER_SPECIFIC we should still attempt to wrap any output handles below.
     if (UR_RESULT_SUCCESS != result &&

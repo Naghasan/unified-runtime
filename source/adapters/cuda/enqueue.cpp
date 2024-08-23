@@ -686,7 +686,7 @@ UR_APIEXPORT ur_result_t UR_APICALL urEnqueueKernelLaunchCustomExp(
     launch_config.sharedMemBytes = LocalSize;
     launch_config.hStream = CuStream;
     launch_config.attrs = &launch_attribute[0];
-    launch_config.numAttrs = numPropsInLaunchPropList;
+    launch_config.numAttrs = launch_attribute.size();
 
     UR_CHECK_ERROR(cuLaunchKernelEx(&launch_config, CuFunc,
                                     const_cast<void **>(ArgIndices.data()),

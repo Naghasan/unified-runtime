@@ -64,13 +64,6 @@ ur_result_t urMemImageCreateWithNativeHandle(
   return UR_RESULT_ERROR_UNSUPPORTED_FEATURE;
 }
 
-ur_result_t urMemGetInfo(ur_mem_handle_t hMemory, ur_mem_info_t propName,
-                         size_t propSize, void *pPropValue,
-                         size_t *pPropSizeRet) {
-  logger::error("{} function not implemented!", __FUNCTION__);
-  return UR_RESULT_ERROR_UNSUPPORTED_FEATURE;
-}
-
 ur_result_t urMemImageGetInfo(ur_mem_handle_t hMemory, ur_image_info_t propName,
                               size_t propSize, void *pPropValue,
                               size_t *pPropSizeRet) {
@@ -422,6 +415,7 @@ ur_result_t urCommandBufferAppendKernelLaunchExp(
     ur_exp_command_buffer_handle_t hCommandBuffer, ur_kernel_handle_t hKernel,
     uint32_t workDim, const size_t *pGlobalWorkOffset,
     const size_t *pGlobalWorkSize, const size_t *pLocalWorkSize,
+    uint32_t numKernelAlternatives, ur_kernel_handle_t *phKernelAlternatives,
     uint32_t numSyncPointsInWaitList,
     const ur_exp_command_buffer_sync_point_t *pSyncPointWaitList,
     ur_exp_command_buffer_sync_point_t *pSyncPoint,

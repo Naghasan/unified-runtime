@@ -11,6 +11,17 @@
 #include "program.hpp"
 #include "ur_util.hpp"
 
+#include <algorithm>
+#include <array>
+#include <cstdint>
+#include <cstring>
+#include <memory>
+#include <new>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
+
 bool getMaxRegistersJitOptionValue(const std::string &BuildOptions,
                                    unsigned int &Value) {
   using namespace std::string_view_literals;
@@ -405,8 +416,6 @@ urProgramGetInfo(ur_program_handle_t hProgram, ur_program_info_t propName,
     return ReturnValue(1u);
   case UR_PROGRAM_INFO_DEVICES:
     return ReturnValue(&hProgram->Device, 1);
-  case UR_PROGRAM_INFO_SOURCE:
-    return ReturnValue(hProgram->Binary);
   case UR_PROGRAM_INFO_BINARY_SIZES:
     return ReturnValue(&hProgram->BinarySizeInBytes, 1);
   case UR_PROGRAM_INFO_BINARIES:
@@ -416,6 +425,7 @@ urProgramGetInfo(ur_program_handle_t hProgram, ur_program_info_t propName,
     UR_ASSERT(getKernelNames(hProgram), UR_RESULT_ERROR_UNSUPPORTED_FEATURE);
     return UR_RESULT_ERROR_UNSUPPORTED_ENUMERATION;
   case UR_PROGRAM_INFO_NUM_KERNELS:
+  case UR_PROGRAM_INFO_IL:
     return UR_RESULT_ERROR_UNSUPPORTED_ENUMERATION;
   default:
     break;
